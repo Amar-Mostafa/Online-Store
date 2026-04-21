@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: substore
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_PATH
+        value: /var/data/store.db
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+    disk:
+      name: substore-data
+      mountPath: /var/data
+      sizeGB: 1
+    healthCheckPath: /api/products

@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Dashboard — SubStore</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .support-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr 360px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .support-sidebar {
+      background: var(--dark);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .support-sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .support-sidebar-header .logo { color: white; margin-bottom: 10px; }
+
+    .tabs-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6);
+      border: none;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: var(--success); color: white; }
+    .tab-btn .badge {
+      display: inline-block;
+      background: rgba(0,0,0,0.3);
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-size: 0.65rem;
+      margin-left: 4px;
+    }
+
+    .support-filter-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .support-filter-btn {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6);
+      border: none;
+      cursor: pointer;
+    }
+    .support-filter-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+    .support-filter-btn.active { background: var(--success); color: white; }
+
+    .convo-list { flex: 1; overflow-y: auto; padding: 8px; }
+
+    .convo-item {
+      padding: 12px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+    .convo-item:hover { background: rgba(255,255,255,0.05); }
+    .convo-item.active { background: rgba(0,184,148,0.2); }
+    .convo-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .convo-item-name { font-weight: 600; font-size: 0.9rem; }
+    .convo-item-time { font-size: 0.7rem; color: rgba(255,255,255,0.4); }
+    .convo-item-preview {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .convo-item-meta { display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+
+    .convo-status, .ticket-status {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.63rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .convo-status.open, .ticket-status.open { background: #FDCB6E; color: #856404; }
+    .convo-status.assigned, .ticket-status.in_progress { background: #00B894; color: white; }
+    .ticket-status.resolved { background: #74B9FF; color: #1e3a5f; }
+    .convo-status.closed, .ticket-status.closed { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); }
+
+    .convo-msg-count { font-size: 0.7rem; color: rgba(255,255,255,0.4); }
+
+    /* Chat area */
+    .support-chat { display: flex; flex-direction: column; background: var(--light); overflow: hidden; }
+    .support-chat-header {
+      padding: 14px 22px;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .support-chat-header h2 { font-size: 1.05rem; font-weight: 700; }
+    .support-chat-header .phone { font-size: 0.85rem; color: var(--dark-light); }
+    .support-chat-actions { display: flex; gap: 8px; }
+
+    .support-chat-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+    .support-chat-empty {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--dark-light);
+      text-align: center;
+    }
+    .support-chat-empty .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    .s-msg { margin-bottom: 10px; max-width: 75%; }
+    .s-msg.me { margin-left: auto; text-align: right; }
+    .s-msg.them { margin-right: auto; }
+    .s-msg-name { font-size: 0.7rem; font-weight: 600; color: var(--dark-light); margin-bottom: 2px; }
+    .s-msg-bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      display: inline-block;
+      text-align: left;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .s-msg.me .s-msg-bubble { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+    .s-msg.them .s-msg-bubble { background: var(--white); color: var(--dark); border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .s-msg-time { font-size: 0.65rem; color: var(--gray); margin-top: 2px; }
+    .s-system-msg {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--gray);
+      padding: 6px 12px;
+      font-style: italic;
+      background: rgba(0,0,0,0.03);
+      border-radius: 10px;
+      margin: 8px auto;
+      display: block;
+      white-space: pre-line;
+    }
+
+    .support-chat-footer {
+      padding: 12px 22px;
+      background: var(--white);
+      border-top: 1px solid var(--gray-light);
+      position: relative;
+    }
+    .chat-input-row { display: flex; gap: 10px; }
+    .chat-input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      font-size: 0.92rem;
+    }
+    .chat-input-row input:focus { outline: none; border-color: var(--primary); }
+    .chat-input-row button {
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    .chat-input-row button:hover { background: var(--primary-dark); }
+    .chat-input-hint {
+      font-size: 0.7rem;
+      color: var(--dark-light);
+      margin-top: 6px;
+    }
+
+    /* Quick replies dropdown */
+    .qr-dropdown {
+      position: absolute;
+      bottom: 100%;
+      left: 22px;
+      right: 22px;
+      background: white;
+      border: 1px solid var(--gray-light);
+      border-radius: 8px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+      max-height: 220px;
+      overflow-y: auto;
+      margin-bottom: 4px;
+      display: none;
+    }
+    .qr-dropdown.show { display: block; }
+    .qr-item {
+      padding: 8px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--gray-light);
+    }
+    .qr-item:hover, .qr-item.highlighted { background: var(--light); }
+    .qr-shortcut { font-weight: 700; color: var(--primary); font-size: 0.85rem; }
+    .qr-message { font-size: 0.8rem; color: var(--dark-light); margin-top: 2px; }
+
+    /* Right panel */
+    .support-details {
+      background: var(--white);
+      border-left: 1px solid var(--gray-light);
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .support-details-empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--dark-light); text-align: center; }
+
+    .detail-section { margin-bottom: 20px; }
+    .detail-section h3 {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--dark-light);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--gray-light);
+    }
+    .detail-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.85rem; }
+    .detail-row .label { color: var(--dark-light); }
+    .detail-row .value { font-weight: 600; }
+    .detail-order { background: var(--light); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+    .detail-order-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; }
+    .detail-order-items { font-size: 0.78rem; color: var(--dark-light); }
+    .detail-order-item { padding: 3px 0; display: flex; justify-content: space-between; }
+
+    .note-item {
+      background: #FFF9E6;
+      border-left: 3px solid #FDCB6E;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+    }
+    .note-meta { font-size: 0.68rem; color: var(--dark-light); margin-top: 4px; }
+    .note-input-row { display: flex; gap: 6px; }
+    .note-input-row textarea {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--gray-light);
+      border-radius: 6px;
+      font-size: 0.82rem;
+      resize: vertical;
+      min-height: 40px;
+      font-family: inherit;
+    }
+    .note-input-row button {
+      padding: 6px 12px;
+      background: var(--dark);
+      color: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .support-stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 10px 16px;
+      background: rgba(0,0,0,0.2);
+    }
+    .support-stat { text-align: center; }
+    .support-stat .num { font-size: 1.15rem; font-weight: 800; }
+    .support-stat .lbl { font-size: 0.6rem; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+
+    .online-bar {
+      padding: 10px 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .online-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #00B894;
+      border-radius: 50%;
+      margin-right: 6px;
+      box-shadow: 0 0 0 0 rgba(0,184,148,0.7);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0,184,148,0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(0,184,148,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,184,148,0); }
+    }
+    .online-agents { margin-top: 4px; color: rgba(255,255,255,0.4); }
+
+    .support-logout {
+      padding: 10px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .support-logout a { color: rgba(255,255,255,0.5); font-size: 0.82rem; }
+    .support-logout a:hover { color: white; }
+    .support-logout .agent-name { font-size: 0.72rem; color: rgba(255,255,255,0.3); }
+
+    .ticket-detail-card {
+      background: #FFF3CD;
+      border-left: 4px solid #FDCB6E;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 1024px) {
+      .support-layout { grid-template-columns: 280px 1fr; }
+      .support-details { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="support-layout">
+
+    <!-- Left Panel -->
+    <aside class="support-sidebar">
+      <div class="support-sidebar-header">
+        <a href="/" class="logo">
+          <div class="logo-icon" style="background:linear-gradient(135deg,#00B894,#00CEC9);">S</div>
+          Support Panel
+        </a>
+        <div class="tabs-row">
+          <button class="tab-btn active" data-tab="chats" onclick="switchTab('chats')">Chats</button>
+          <button class="tab-btn" data-tab="tickets" onclick="switchTab('tickets')">Tickets <span class="badge" id="ticketsBadge">0</span></button>
+        </div>
+        <div class="support-filter-row" id="chatsFilters">
+          <button class="support-filter-btn active" data-filter="all" onclick="filterConvos('all', this)">All</button>
+          <button class="support-filter-btn" data-filter="open" onclick="filterConvos('open', this)">Open</button>
+          <button class="support-filter-btn" data-filter="assigned" onclick="filterConvos('assigned', this)">Assigned</button>
+          <button class="support-filter-btn" data-filter="closed" onclick="filterConvos('closed', this)">Closed</button>
+        </div>
+        <div class="support-filter-row" id="ticketsFilters" style="display:none;">
+          <button class="support-filter-btn active" data-tfilter="all" onclick="filterTickets('all', this)">All</button>
+          <button class="support-filter-btn" data-tfilter="open" onclick="filterTickets('open', this)">Open</button>
+          <button class="support-filter-btn" data-tfilter="in_progress" onclick="filterTickets('in_progress', this)">Active</button>
+          <button class="support-filter-btn" data-tfilter="mine" onclick="filterTickets('mine', this)">Mine</button>
+          <button class="support-filter-btn" data-tfilter="resolved" onclick="filterTickets('resolved', this)">Resolved</button>
+        </div>
+      </div>
+
+      <div class="support-stats-bar" id="supportStats">
+        <div class="support-stat"><span class="num" id="sOpen">0</span><br><span class="lbl">Open</span></div>
+        <div class="support-stat"><span class="num" id="sAssigned">0</span><br><span class="lbl">Active</span></div>
+        <div class="support-stat"><span class="num" id="sMine">0</span><br><span class="lbl">Mine</span></div>
+        <div class="support-stat"><span class="num" id="sClosed">0</span><br><span class="lbl">Closed</span></div>
+      </div>
+
+      <div class="online-bar">
+        <div><span class="online-dot"></span>You're online</div>
+        <div class="online-agents" id="onlineAgents">Loading agents…</div>
+      </div>
+
+      <div class="convo-list" id="convoList">
+        <div style="padding:30px;text-align:center;color:rgba(255,255,255,0.4);">Loading...</div>
+      </div>
+
+      <div class="support-logout">
+        <a href="#" onclick="supportLogout()">Sign Out</a>
+        <span class="agent-name" id="agentName"></span>
+      </div>
+    </aside>
+
+    <!-- Center -->
+    <main class="support-chat">
+      <div class="support-chat-header" id="chatHeader" style="display:none;">
+        <div>
+          <h2 id="chatCustomerName">Customer</h2>
+          <span class="phone" id="chatCustomerPhone"></span>
+        </div>
+        <div class="support-chat-actions">
+          <button class="btn btn-sm btn-success" id="assignBtn" onclick="assignConversation()">Assign to Me</button>
+          <select id="ticketStatusSel" onchange="updateTicketStatus()" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid var(--gray-light);">
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button class="btn btn-sm btn-danger" id="closeConvoBtn" onclick="closeConversation()">Close</button>
+        </div>
+      </div>
+
+      <div class="support-chat-body" id="chatBody">
+        <div class="support-chat-empty">
+          <div>
+            <div class="icon">💬</div>
+            <p><strong>Select a conversation or ticket</strong></p>
+            <p>Choose from the left panel to start helping customers.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="support-chat-footer" id="chatFooter" style="display:none;">
+        <div class="qr-dropdown" id="qrDropdown"></div>
+        <div class="chat-input-row">
+          <input type="text" id="msgInput" placeholder='Type your reply — use "/" for quick replies' autocomplete="off">
+          <button onclick="sendSupportMessage()">Send</button>
+        </div>
+        <div class="chat-input-hint">
+          Tip: start with <code>/</code> to insert a quick reply. Try <code>/hi</code>, <code>/wait</code>, <code>/thanks</code>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right -->
+    <aside class="support-details" id="detailsPanel">
+      <div class="support-details-empty">
+        <div>
+          <p>Customer details, notes, and ticket info will appear here.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    if (!Auth.isLoggedIn() || (!Auth.isSupport() && !Auth.isAdmin())) {
+      window.location.href = '/support/login.html';
+    }
+
+    const token = Auth.getToken();
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    const myId = Auth.getUser()?.id;
+
+    document.getElementById('agentName').textContent = Auth.getUser()?.name || Auth.getUser()?.phone;
+
+    let currentTab = 'chats';
+    let activeConvoId = null;
+    let activeTicketId = null;
+    let activeUserId = null;
+    let lastMsgId = 0;
+    let pollInterval = null;
+    let listPollInterval = null;
+    let currentFilter = 'all';
+    let currentTicketFilter = 'all';
+    let quickReplies = [];
+
+    // ===== Tabs =====
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.getElementById('chatsFilters').style.display = tab === 'chats' ? 'flex' : 'none';
+      document.getElementById('ticketsFilters').style.display = tab === 'tickets' ? 'flex' : 'none';
+      if (tab === 'chats') loadConversations();
+      else loadTickets();
+    }
+
+    // ===== Chat Conversations =====
+    async function loadConversations() {
+      try {
+        const url = `/api/chat/support/conversations${currentFilter !== 'all' ? `?status=${currentFilter}` : ''}`;
+        const res = await fetch(url, { headers });
+        const convos = await res.json();
+
+        const list = document.getElementById('convoList');
+        if (convos.length === 0) {
+          list.innerHTML = '<div style="padding:30px;text-align:center;color:rgba(255,255,255,0.4);">No conversations</div>';
+          return;
+        }
+        list.innerHTML = convos.map(c => {
+          const time = new Date(c.updated_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="convo-item ${c.id === activeConvoId ? 'active' : ''}" onclick="selectConversation(${c.id}, ${c.user_id})">
+              <div class="convo-item-header">
+                <span class="convo-item-name">${escapeHtml(c.customer_name || c.customer_phone)}</span>
+                <span class="convo-item-time">${time}</span>
+              </div>
+              <div class="convo-item-meta">
+                <span class="convo-status ${c.status}">${c.status}</span>
+                <span class="convo-msg-count">${c.message_count} msgs</span>
+                ${c.support_name ? `<span class="convo-msg-count">→ ${escapeHtml(c.support_name)}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/chat/support/stats', { headers });
+        const s = await res.json();
+        document.getElementById('sOpen').textContent = s.open;
+        document.getElementById('sAssigned').textContent = s.assigned;
+        document.getElementById('sMine').textContent = s.myActive;
+        document.getElementById('sClosed').textContent = s.closedToday;
+      } catch (e) {}
+      try {
+        const res = await fetch('/api/tickets/stats/summary', { headers });
+        const t = await res.json();
+        document.getElementById('ticketsBadge').textContent = t.open + t.in_progress;
+      } catch (e) {}
+    }
+
+    function filterConvos(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('#chatsFilters .support-filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      loadConversations();
+    }
+
+    // ===== Tickets =====
+    async function loadTickets() {
+      try {
+        let url = '/api/tickets';
+        const params = [];
+        if (currentTicketFilter === 'mine') params.push('mine=1');
+        else if (currentTicketFilter !== 'all') params.push(`status=${currentTicketFilter}`);
+        if (params.length) url += '?' + params.join('&');
+
+        const res = await fetch(url, { headers });
+        const tickets = await res.json();
+
+        const list = document.getElementById('convoList');
+        if (tickets.length === 0) {
+          list.innerHTML = '<div style="padding:30px;text-align:center;color:rgba(255,255,255,0.4);">No tickets</div>';
+          return;
+        }
+        list.innerHTML = tickets.map(t => {
+          const time = new Date(t.created_at + 'Z').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="convo-item ${t.id === activeTicketId ? 'active' : ''}" onclick="selectTicket(${t.id}, ${t.conversation_id || 'null'}, ${t.user_id || 'null'})">
+              <div class="convo-item-header">
+                <span class="convo-item-name">#${t.id} — ${escapeHtml(t.name)}</span>
+                <span class="convo-item-time">${time}</span>
+              </div>
+              <div class="convo-item-preview">${escapeHtml(t.problem_description.substring(0, 80))}${t.problem_description.length > 80 ? '…' : ''}</div>
+              <div class="convo-item-meta">
+                <span class="ticket-status ${t.status}">${t.status.replace('_', ' ')}</span>
+                ${t.product_name ? `<span class="convo-msg-count">${escapeHtml(t.product_name)}</span>` : ''}
+                ${t.support_name ? `<span class="convo-msg-count">→ ${escapeHtml(t.support_name)}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    function filterTickets(filter, el) {
+      currentTicketFilter = filter;
+      document.querySelectorAll('#ticketsFilters .support-filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      loadTickets();
+    }
+
+    async function selectTicket(ticketId, convoId, userId) {
+      activeTicketId = ticketId;
+      if (convoId && convoId !== 'null') {
+        activeConvoId = convoId;
+        activeUserId = userId;
+        lastMsgId = 0;
+        document.getElementById('chatHeader').style.display = 'flex';
+        document.getElementById('chatFooter').style.display = 'block';
+        document.getElementById('chatBody').innerHTML = '';
+        await loadChatMessages();
+        startMessagePolling();
+      }
+      // Load ticket details
+      try {
+        const res = await fetch(`/api/tickets/${ticketId}`, { headers });
+        const t = await res.json();
+        if (userId && userId !== 'null') {
+          loadCustomerDetails(userId, t);
+        } else {
+          renderTicketOnlyDetails(t);
+        }
+        // Show status selector
+        const sel = document.getElementById('ticketStatusSel');
+        sel.style.display = '';
+        sel.value = t.status;
+      } catch (e) {}
+    }
+
+    async function updateTicketStatus() {
+      if (!activeTicketId) return;
+      const status = document.getElementById('ticketStatusSel').value;
+      try {
+        await fetch(`/api/tickets/${activeTicketId}/status`, {
+          method: 'PUT', headers, body: JSON.stringify({ status })
+        });
+        showToast(`Ticket marked ${status.replace('_', ' ')}`, 'success');
+        loadTickets();
+      } catch (e) { showToast('Failed to update', 'error'); }
+    }
+
+    function renderTicketOnlyDetails(t) {
+      const panel = document.getElementById('detailsPanel');
+      panel.innerHTML = `
+        <div class="ticket-detail-card">
+          <h3 style="margin-bottom:6px;">Ticket #${t.id}</h3>
+          <p style="font-size:0.88rem;">${escapeHtml(t.problem_description)}</p>
+        </div>
+        <div class="detail-section">
+          <h3>Ticket Details</h3>
+          <div class="detail-row"><span class="label">Name</span><span class="value">${escapeHtml(t.name)}</span></div>
+          <div class="detail-row"><span class="label">Phone</span><span class="value">${escapeHtml(t.phone)}</span></div>
+          ${t.service_number ? `<div class="detail-row"><span class="label">Service #</span><span class="value">${escapeHtml(t.service_number)}</span></div>` : ''}
+          ${t.product_name ? `<div class="detail-row"><span class="label">Product</span><span class="value">${escapeHtml(t.product_name)}</span></div>` : ''}
+          ${t.order_id ? `<div class="detail-row"><span class="label">Order #</span><span class="value">#${t.order_id}</span></div>` : ''}
+          <div class="detail-row"><span class="label">Status</span><span class="value">${t.status}</span></div>
+          <div class="detail-row"><span class="label">Assigned</span><span class="value">${escapeHtml(t.support_name || '—')}</span></div>
+          <div class="detail-row"><span class="label">Created</span><span class="value">${new Date(t.created_at + 'Z').toLocaleString()}</span></div>
+        </div>
+      `;
+    }
+
+    // ===== Select Conversation =====
+    async function selectConversation(convoId, userId) {
+      activeConvoId = convoId;
+      activeUserId = userId;
+      activeTicketId = null;
+      lastMsgId = 0;
+
+      document.querySelectorAll('.convo-item').forEach(c => c.classList.remove('active'));
+      event?.target?.closest('.convo-item')?.classList.add('active');
+
+      document.getElementById('chatHeader').style.display = 'flex';
+      document.getElementById('chatFooter').style.display = 'block';
+      document.getElementById('ticketStatusSel').style.display = 'none';
+      document.getElementById('chatBody').innerHTML = '';
+
+      await loadChatMessages();
+      startMessagePolling();
+      loadCustomerDetails(userId);
+    }
+
+    async function loadChatMessages() {
+      if (!activeConvoId) return;
+      try {
+        const url = `/api/chat/messages/${activeConvoId}${lastMsgId ? `?after_id=${lastMsgId}` : ''}`;
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+
+        if (data.messages && data.messages.length > 0) {
+          const body = document.getElementById('chatBody');
+          data.messages.forEach(msg => {
+            if (msg.id <= lastMsgId) return;
+            const isMe = msg.sender_id === myId;
+            const isSystem = msg.message.startsWith('---');
+            const time = new Date(msg.created_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (isSystem) {
+              body.innerHTML += `<div class="s-system-msg">${escapeHtml(msg.message.replace(/^---\s*/, '').replace(/\s*---$/, ''))}</div>`;
+            } else {
+              body.innerHTML += `
+                <div class="s-msg ${isMe ? 'me' : 'them'}">
+                  ${!isMe ? `<div class="s-msg-name">${escapeHtml(msg.sender_name || 'Customer')}</div>` : ''}
+                  <div class="s-msg-bubble">${escapeHtml(msg.message)}</div>
+                  <div class="s-msg-time">${time}</div>
+                </div>
+              `;
+            }
+          });
+          lastMsgId = data.messages[data.messages.length - 1].id;
+          body.scrollTop = body.scrollHeight;
+        }
+
+        if (data.conversation) {
+          const c = data.conversation;
+          document.getElementById('assignBtn').style.display = c.status === 'open' ? '' : 'none';
+          document.getElementById('closeConvoBtn').style.display = c.status !== 'closed' ? '' : 'none';
+          if (c.status === 'closed') {
+            document.getElementById('chatFooter').style.display = 'none';
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function sendSupportMessage() {
+      const input = document.getElementById('msgInput');
+      const message = input.value.trim();
+      if (!message || !activeConvoId) return;
+      input.value = '';
+      hideQRDropdown();
+      try {
+        await fetch('/api/chat/message', {
+          method: 'POST', headers,
+          body: JSON.stringify({ conversation_id: activeConvoId, message })
+        });
+        loadChatMessages();
+      } catch (e) { showToast('Failed to send', 'error'); }
+    }
+
+    async function assignConversation() {
+      if (!activeConvoId) return;
+      try {
+        await fetch(`/api/chat/support/assign/${activeConvoId}`, { method: 'PUT', headers });
+        showToast('Assigned to you!', 'success');
+        loadChatMessages();
+        loadConversations();
+        loadStats();
+      } catch (e) { showToast('Failed to assign', 'error'); }
+    }
+
+    async function closeConversation() {
+      if (!activeConvoId || !confirm('Close this conversation?')) return;
+      try {
+        await fetch(`/api/chat/close/${activeConvoId}`, { method: 'PUT', headers });
+        showToast('Conversation closed', 'success');
+        loadChatMessages();
+        loadConversations();
+        loadStats();
+      } catch (e) { showToast('Failed to close', 'error'); }
+    }
+
+    // ===== Customer Details + Notes =====
+    async function loadCustomerDetails(userId, ticket) {
+      const panel = document.getElementById('detailsPanel');
+      try {
+        const res = await fetch(`/api/chat/support/customer/${userId}`, { headers });
+        const data = await res.json();
+
+        document.getElementById('chatCustomerName').textContent = data.user.name || 'Customer';
+        document.getElementById('chatCustomerPhone').textContent = data.user.phone;
+
+        let ordersHtml = '';
+        if (data.orders.length > 0) {
+          ordersHtml = data.orders.map(o => {
+            const items = o.items.map(i => `
+              <div class="detail-order-item">
+                <span>${escapeHtml(i.product_name)}</span>
+                <span>$${(i.price * i.quantity).toFixed(2)}</span>
+              </div>`).join('');
+            return `
+              <div class="detail-order">
+                <div class="detail-order-header">
+                  <strong>Order #${o.id}</strong>
+                  <span class="status-badge ${o.status}" style="font-size:0.65rem;padding:2px 8px;">${o.status}</span>
+                </div>
+                <div class="detail-order-items">${items}</div>
+                <div style="text-align:right;font-weight:700;font-size:0.85rem;margin-top:4px;">$${o.total.toFixed(2)}</div>
+              </div>`;
+          }).join('');
+        } else {
+          ordersHtml = '<p style="font-size:0.8rem;color:var(--dark-light);">No orders yet</p>';
+        }
+
+        const ticketHtml = ticket ? `
+          <div class="ticket-detail-card">
+            <h3 style="margin-bottom:6px;">Ticket #${ticket.id}</h3>
+            <p style="font-size:0.85rem;">${escapeHtml(ticket.problem_description)}</p>
+            ${ticket.service_number ? `<div style="font-size:0.75rem;margin-top:6px;"><strong>Service:</strong> ${escapeHtml(ticket.service_number)}</div>` : ''}
+          </div>` : '';
+
+        panel.innerHTML = `
+          ${ticketHtml}
+          <div class="detail-section">
+            <h3>Customer Info</h3>
+            <div class="detail-row"><span class="label">Name</span><span class="value">${escapeHtml(data.user.name || '—')}</span></div>
+            <div class="detail-row"><span class="label">Phone</span><span class="value">${escapeHtml(data.user.phone)}</span></div>
+            <div class="detail-row"><span class="label">Role</span><span class="value">${data.user.role}</span></div>
+            <div class="detail-row"><span class="label">Joined</span><span class="value">${new Date(data.user.created_at + 'Z').toLocaleDateString()}</span></div>
+          </div>
+          <div class="detail-section">
+            <h3>Recent Orders (${data.orders.length})</h3>
+            ${ordersHtml}
+          </div>
+          <div class="detail-section">
+            <h3>Internal Notes</h3>
+            <div id="notesList" style="margin-bottom:8px;">Loading…</div>
+            <div class="note-input-row">
+              <textarea id="noteInput" placeholder="Add a private note…"></textarea>
+              <button onclick="addNote()">Add</button>
+            </div>
+          </div>
+        `;
+
+        loadNotes();
+      } catch (e) {
+        panel.innerHTML = '<div class="support-details-empty"><p>Failed to load details</p></div>';
+      }
+    }
+
+    async function loadNotes() {
+      if (!activeConvoId) return;
+      try {
+        const res = await fetch(`/api/support/notes/${activeConvoId}`, { headers });
+        const notes = await res.json();
+        const el = document.getElementById('notesList');
+        if (!el) return;
+        if (notes.length === 0) {
+          el.innerHTML = '<p style="font-size:0.78rem;color:var(--dark-light);">No notes yet</p>';
+          return;
+        }
+        el.innerHTML = notes.map(n => `
+          <div class="note-item">
+            ${escapeHtml(n.note)}
+            <div class="note-meta">${escapeHtml(n.support_name || 'Agent')} · ${new Date(n.created_at + 'Z').toLocaleString()}</div>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    async function addNote() {
+      const input = document.getElementById('noteInput');
+      const note = input.value.trim();
+      if (!note || !activeConvoId) return;
+      try {
+        await fetch(`/api/support/notes/${activeConvoId}`, {
+          method: 'POST', headers, body: JSON.stringify({ note })
+        });
+        input.value = '';
+        loadNotes();
+      } catch (e) { showToast('Failed to add note', 'error'); }
+    }
+
+    // ===== Quick Replies =====
+    async function loadQuickReplies() {
+      try {
+        const res = await fetch('/api/support/quick-replies', { headers });
+        quickReplies = await res.json();
+      } catch (e) {}
+    }
+
+    function showQRDropdown(filter) {
+      const dd = document.getElementById('qrDropdown');
+      const matches = quickReplies.filter(q => q.shortcut.toLowerCase().startsWith(filter.toLowerCase()));
+      if (matches.length === 0) { dd.classList.remove('show'); return; }
+      dd.innerHTML = matches.map((q, i) => `
+        <div class="qr-item ${i === 0 ? 'highlighted' : ''}" onclick="applyQuickReply('${q.id}')">
+          <div class="qr-shortcut">${escapeHtml(q.shortcut)}</div>
+          <div class="qr-message">${escapeHtml(q.message)}</div>
+        </div>
+      `).join('');
+      dd.classList.add('show');
+    }
+
+    function hideQRDropdown() {
+      document.getElementById('qrDropdown').classList.remove('show');
+    }
+
+    function applyQuickReply(id) {
+      const qr = quickReplies.find(q => q.id == id);
+      if (!qr) return;
+      document.getElementById('msgInput').value = qr.message;
+      document.getElementById('msgInput').focus();
+      hideQRDropdown();
+    }
+
+    // ===== Online agents =====
+    async function loadOnlineAgents() {
+      try {
+        const res = await fetch('/api/support/online', { headers });
+        const agents = await res.json();
+        const el = document.getElementById('onlineAgents');
+        if (agents.length === 0) {
+          el.textContent = 'No other agents online';
+          return;
+        }
+        const others = agents.filter(a => a.id !== myId);
+        if (others.length === 0) {
+          el.textContent = 'Only you online right now';
+        } else {
+          el.textContent = others.map(a => a.name || a.phone).join(', ') + ' online';
+        }
+      } catch (e) {}
+    }
+
+    async function sendHeartbeat() {
+      try { await fetch('/api/support/heartbeat', { method: 'POST', headers }); } catch (e) {}
+    }
+
+    // ===== Polling =====
+    function startMessagePolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(() => loadChatMessages(), 3000);
+    }
+
+    listPollInterval = setInterval(() => {
+      if (currentTab === 'chats') loadConversations();
+      else loadTickets();
+      loadStats();
+      loadOnlineAgents();
+    }, 5000);
+
+    // Heartbeat every 30 seconds
+    setInterval(sendHeartbeat, 30000);
+    sendHeartbeat();
+
+    // ===== Misc =====
+    function supportLogout() {
+      Auth.logout();
+      window.location.href = '/support/login.html';
+    }
+
+    function escapeHtml(text) {
+      if (text == null) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    const msgInput = document.getElementById('msgInput');
+    msgInput.addEventListener('keydown', e => {
+      const dd = document.getElementById('qrDropdown');
+      if (dd.classList.contains('show') && e.key === 'Tab') {
+        e.preventDefault();
+        const first = dd.querySelector('.qr-item');
+        if (first) first.click();
+        return;
+      }
+      if (e.key === 'Escape') { hideQRDropdown(); return; }
+      if (e.key === 'Enter' && !dd.classList.contains('show')) sendSupportMessage();
+      else if (e.key === 'Enter' && dd.classList.contains('show')) {
+        e.preventDefault();
+        const first = dd.querySelector('.qr-item');
+        if (first) first.click();
+      }
+    });
+    msgInput.addEventListener('input', e => {
+      const v = e.target.value;
+      if (v.startsWith('/') && !v.includes(' ')) showQRDropdown(v);
+      else hideQRDropdown();
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.support-chat-footer')) hideQRDropdown();
+    });
+
+    // Init
+    loadConversations();
+    loadStats();
+    loadOnlineAgents();
+    loadQuickReplies();
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./database'\\); console.log\\('DB OK'\\); const db = require\\('./database'\\); console.log\\('Tickets table:', db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table' AND name='tickets'\\\\\"\\).get\\(\\)\\); console.log\\('Quick replies:', db.prepare\\('SELECT COUNT\\(*\\) as c FROM quick_replies'\\).get\\(\\)\\); console.log\\('Users with role column:', db.prepare\\(\\\\\"PRAGMA table_info\\(users\\)\\\\\"\\).all\\(\\).map\\(c => c.name\\).join\\(','\\)\\);\")",
+      "Bash(node -e \"process.env.PORT='0'; const app = require\\('./server'\\); setTimeout\\(\\(\\) => process.exit\\(0\\), 1500\\);\")",
+      "Bash(pkill -f \"node server.js\")",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(PORT=3099 node server.js)"
+    ]
+  }
+}

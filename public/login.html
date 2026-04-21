@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — SubStore</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <!-- Step 1: Phone Number -->
+      <div id="phoneStep">
+        <h1>Welcome Back</h1>
+        <p class="subtitle">Enter your phone number to sign in or create an account</p>
+        <div class="form-group">
+          <label for="phoneInput">Phone Number</label>
+          <input type="tel" id="phoneInput" class="form-input" placeholder="e.g. 00966580549057" autofocus>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" id="sendOtpBtn" onclick="sendOTP()">
+          Send Verification Code
+        </button>
+        <div class="auth-link mt-4">
+          <a href="/">← Back to Store</a>
+        </div>
+      </div>
+
+      <!-- Step 2: OTP Verification -->
+      <div id="otpStep" class="hidden">
+        <h1>Verify Your Number</h1>
+        <p class="subtitle">Enter the 6-digit code sent to <strong id="otpPhone"></strong></p>
+        <div class="otp-inputs" id="otpInputs">
+          <input type="text" class="otp-input" maxlength="1" data-idx="0" autofocus>
+          <input type="text" class="otp-input" maxlength="1" data-idx="1">
+          <input type="text" class="otp-input" maxlength="1" data-idx="2">
+          <input type="text" class="otp-input" maxlength="1" data-idx="3">
+          <input type="text" class="otp-input" maxlength="1" data-idx="4">
+          <input type="text" class="otp-input" maxlength="1" data-idx="5">
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" id="verifyBtn" onclick="verifyOTP()">
+          Verify & Sign In
+        </button>
+        <div class="auth-link mt-4">
+          <a href="#" onclick="showPhoneStep(); return false;">← Change phone number</a>
+        </div>
+        <p class="text-center mt-2" style="font-size:0.85rem; color:var(--dark-light);">
+          A verification code has been sent to your phone
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    let currentPhone = '';
+
+    function showPhoneStep() {
+      document.getElementById('phoneStep').classList.remove('hidden');
+      document.getElementById('otpStep').classList.add('hidden');
+    }
+
+    async function sendOTP() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      if (!phone || phone.length < 8) {
+        showToast('Please enter a valid phone number', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('sendOtpBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        currentPhone = phone;
+        document.getElementById('otpPhone').textContent = phone;
+        document.getElementById('phoneStep').classList.add('hidden');
+        document.getElementById('otpStep').classList.remove('hidden');
+
+        // Focus first OTP input
+        document.querySelector('.otp-input').focus();
+        showToast(data.message || 'Verification code sent!', 'success');
+      } catch (e) {
+        showToast(e.message || 'Failed to send OTP', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send Verification Code';
+      }
+    }
+
+    async function verifyOTP() {
+      const inputs = document.querySelectorAll('.otp-input');
+      const code = Array.from(inputs).map(i => i.value).join('');
+
+      if (code.length !== 6) {
+        showToast('Please enter the full 6-digit code', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('verifyBtn');
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+
+      try {
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: currentPhone, code })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        // Save auth data
+        Auth.login(data.token, data.user);
+        showToast('Signed in successfully!', 'success');
+
+        // Redirect based on user type
+        setTimeout(() => {
+          if (data.user.is_admin) {
+            window.location.href = '/admin/';
+          } else {
+            window.location.href = '/';
+          }
+        }, 500);
+      } catch (e) {
+        showToast(e.message || 'Invalid code', 'error');
+        inputs.forEach(i => { i.value = ''; });
+        inputs[0].focus();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Verify & Sign In';
+      }
+    }
+
+    // OTP input auto-advance
+    document.querySelectorAll('.otp-input').forEach((input, idx, arr) => {
+      input.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val && idx < arr.length - 1) {
+          arr[idx + 1].focus();
+        }
+        if (val && idx === arr.length - 1) {
+          verifyOTP();
+        }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+          arr[idx - 1].focus();
+        }
+      });
+      // Allow paste
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text').trim();
+        if (/^\d{6}$/.test(paste)) {
+          arr.forEach((inp, i) => { inp.value = paste[i]; });
+          arr[5].focus();
+          setTimeout(verifyOTP, 100);
+        }
+      });
+    });
+
+    // Enter key on phone input
+    document.getElementById('phoneInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendOTP();
+    });
+
+    // If already logged in, redirect
+    if (Auth.isLoggedIn()) {
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SubStore — Premium Digital Subscriptions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <div class="logo-icon">S</div>
+        SubStore
+      </a>
+      <nav class="nav" id="mainNav">
+        <a href="/" class="nav-link active">Store</a>
+        <a href="/cart.html" class="nav-link cart-link">
+          Cart <span class="cart-badge" id="cartBadge"></span>
+        </a>
+        <a href="/orders.html" class="nav-link" id="ordersLink" style="display:none;">My Orders</a>
+        <a href="/login.html" class="nav-link btn btn-primary btn-sm" id="authBtn">Sign In</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Premium Subscriptions at Your Fingertips</h1>
+      <p>Get instant access to the world's most popular digital subscriptions — AI tools, streaming, productivity apps, and more. Fast delivery, secure payments.</p>
+      <div class="hero-buttons">
+        <a href="#products" class="btn btn-primary">Browse Products</a>
+        <a href="/login.html" class="btn btn-secondary" id="heroAuthBtn">Create Account</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Products Section -->
+  <section class="container" id="products">
+    <h2 class="section-title">Our Subscriptions</h2>
+    <p class="section-subtitle">Choose from the best digital services available</p>
+
+    <!-- Filters -->
+    <div class="filters" id="filterBar">
+      <button class="filter-btn active" data-category="all">All</button>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="products-grid" id="productsGrid">
+      <div class="spinner"></div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2026 SubStore. All rights reserved. | <a href="/admin/">Admin Panel</a></p>
+  </footer>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/chat-widget.js"></script>
+  <script>
+    // Product icon/color mapping
+    const productStyles = {
+      'ChatGPT Plus': { icon: '🤖', bg: '#10A37F' },
+      'LinkedIn Premium Business': { icon: '💼', bg: '#0077B5' },
+      'YouTube Premium': { icon: '▶️', bg: '#FF0000' },
+      'Spotify Premium': { icon: '🎵', bg: '#1DB954' },
+      'Netflix Standard': { icon: '🎬', bg: '#E50914' },
+      'Microsoft 365 Personal': { icon: '📊', bg: '#0078D4' },
+      'Adobe Creative Cloud': { icon: '🎨', bg: '#FF0000' },
+      'Canva Pro': { icon: '✏️', bg: '#00C4CC' }
+    };
+
+    function getBadgeClass(badge) {
+      if (!badge) return '';
+      const map = {
+        'Most Popular': 'popular',
+        'Best Value': 'value',
+        'Best for Business': 'business',
+        'Professional': 'professional'
+      };
+      return map[badge] || 'popular';
+    }
+
+    function renderProduct(product) {
+      const style = productStyles[product.name] || { icon: '📦', bg: '#6C5CE7' };
+      const isInCart = Cart.has(product.id);
+      const features = (product.features || []).map(f => `<li>${f}</li>`).join('');
+      const badge = product.badge ? `<div class="product-badge ${getBadgeClass(product.badge)}">${product.badge}</div>` : '';
+
+      return `
+        <div class="product-card" data-product-id="${product.id}">
+          ${badge}
+          <div class="product-header">
+            <div class="product-icon" style="background:${style.bg}20; color:${style.bg}">
+              ${style.icon}
+            </div>
+            <div class="product-header-text">
+              <div class="product-category">${product.category}</div>
+              <h3>${product.name}</h3>
+            </div>
+          </div>
+          <div class="product-body">
+            <p class="product-description">${product.description}</p>
+            <ul class="product-features">${features}</ul>
+          </div>
+          <div class="product-footer">
+            <div class="product-price">
+              <span class="amount">$${product.price.toFixed(2)}</span>
+              <span class="period">/ ${product.duration}</span>
+            </div>
+            <button class="btn-add-cart ${isInCart ? 'in-cart' : ''}"
+                    onclick="toggleCart(${product.id})"
+                    data-product-id="${product.id}">
+              ${isInCart ? '✓ In Cart' : 'Add to Cart'}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    let allProducts = [];
+
+    async function loadProducts(category = 'all') {
+      const grid = document.getElementById('productsGrid');
+      grid.innerHTML = '<div class="spinner"></div>';
+      try {
+        const url = category === 'all' ? '/api/products' : `/api/products?category=${encodeURIComponent(category)}`;
+        const res = await fetch(url);
+        allProducts = await res.json();
+        grid.innerHTML = allProducts.map(renderProduct).join('');
+      } catch (e) {
+        grid.innerHTML = '<p class="text-center">Failed to load products.</p>';
+      }
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/products/meta/categories');
+        const categories = await res.json();
+        const bar = document.getElementById('filterBar');
+        categories.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.className = 'filter-btn';
+          btn.dataset.category = cat;
+          btn.textContent = cat;
+          bar.appendChild(btn);
+        });
+
+        bar.addEventListener('click', e => {
+          if (e.target.classList.contains('filter-btn')) {
+            bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            loadProducts(e.target.dataset.category);
+          }
+        });
+      } catch (e) {}
+    }
+
+    function toggleCart(productId) {
+      const product = allProducts.find(p => p.id === productId);
+      if (!product) return;
+
+      if (Cart.has(productId)) {
+        Cart.remove(productId);
+        showToast('Removed from cart', 'info');
+      } else {
+        Cart.add(product);
+        showToast(`${product.name} added to cart!`, 'success');
+      }
+      updateCartButtons();
+      updateCartBadge();
+    }
+
+    function updateCartButtons() {
+      document.querySelectorAll('.btn-add-cart').forEach(btn => {
+        const id = parseInt(btn.dataset.productId);
+        const inCart = Cart.has(id);
+        btn.className = `btn-add-cart ${inCart ? 'in-cart' : ''}`;
+        btn.textContent = inCart ? '✓ In Cart' : 'Add to Cart';
+      });
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      loadProducts();
+      loadCategories();
+      updateCartBadge();
+      updateAuthUI();
+    });
+  </script>
+</body>
+</html>

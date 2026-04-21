@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a Problem — SubStore</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .problem-page {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 40px 20px;
+    }
+    .problem-card {
+      max-width: 680px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .problem-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .problem-header h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+    .problem-header p {
+      color: var(--dark-light);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .problem-card { padding: 24px; }
+    }
+    .success-box {
+      background: linear-gradient(135deg, #00B894, #00CEC9);
+      color: white;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .success-box h2 { color: white; margin-bottom: 8px; }
+    .ticket-id-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.25);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="problem-page">
+    <div class="problem-card">
+
+      <div id="formView">
+        <div class="problem-header">
+          <h1>Report a Problem</h1>
+          <p>Tell us what's wrong — a support agent will be assigned to help you right away.</p>
+        </div>
+
+        <form id="problemForm" onsubmit="submitProblem(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Your Name *</label>
+              <input type="text" id="name" class="form-input" required placeholder="Full name">
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone Number *</label>
+              <input type="tel" id="phone" class="form-input" required placeholder="e.g. 00966580549057">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="service_number">Service Number</label>
+              <input type="text" id="service_number" class="form-input" placeholder="Your service / subscription ID">
+            </div>
+            <div class="form-group">
+              <label for="product_id">Product</label>
+              <select id="product_id" class="form-input">
+                <option value="">— Select product (optional) —</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="order_id">Order Number (if applicable)</label>
+            <input type="number" id="order_id" class="form-input" placeholder="e.g. 42">
+          </div>
+
+          <div class="form-group">
+            <label for="problem_description">Describe the problem *</label>
+            <textarea id="problem_description" class="form-input" rows="5" required
+              placeholder="Please describe the issue in detail. Include error messages, what you expected, and what actually happened."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">
+            Submit Problem
+          </button>
+
+          <div class="auth-link mt-4">
+            <a href="/">← Back to Store</a>
+          </div>
+        </form>
+      </div>
+
+      <div id="successView" class="hidden">
+        <div class="success-box">
+          <h2>Ticket Submitted!</h2>
+          <div class="ticket-id-badge" id="ticketBadge">#0</div>
+          <p id="assignedMsg">A support agent will be assigned to you.</p>
+        </div>
+        <p style="text-align:center; margin-bottom:16px;">
+          You can continue the conversation with your support agent in real-time chat below.
+          Sign in with the phone number you provided to pick up where you left off.
+        </p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+          <a href="/login.html" class="btn btn-primary">Sign in & Chat</a>
+          <a href="/" class="btn btn-secondary">Back to Store</a>
+          <button class="btn btn-secondary" onclick="resetForm()">Submit another</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    // Prefill from logged-in user if available
+    async function init() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.user) {
+              document.getElementById('name').value = data.user.name || '';
+              document.getElementById('phone').value = data.user.phone || '';
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
+
+      // Load products into dropdown
+      try {
+        const res = await fetch('/api/products');
+        const products = await res.json();
+        const sel = document.getElementById('product_id');
+        products.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+      } catch (e) { /* ignore */ }
+    }
+    init();
+
+    async function submitProblem(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        service_number: document.getElementById('service_number').value.trim(),
+        product_id: document.getElementById('product_id').value || null,
+        order_id: document.getElementById('order_id').value || null,
+        problem_description: document.getElementById('problem_description').value.trim()
+      };
+
+      try {
+        const res = await fetch('/api/tickets/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Submission failed');
+
+        document.getElementById('ticketBadge').textContent = '#' + data.ticket_id;
+        document.getElementById('assignedMsg').textContent = data.message;
+        document.getElementById('formView').classList.add('hidden');
+        document.getElementById('successView').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Problem';
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('problemForm').reset();
+      document.getElementById('formView').classList.remove('hidden');
+      document.getElementById('successView').classList.add('hidden');
+      init();
+    }
+  </script>
+</body>
+</html>

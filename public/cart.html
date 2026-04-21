@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart — SubStore</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <div class="logo-icon">S</div>
+        SubStore
+      </a>
+      <nav class="nav" id="mainNav">
+        <a href="/" class="nav-link">Store</a>
+        <a href="/cart.html" class="nav-link active cart-link">
+          Cart <span class="cart-badge" id="cartBadge"></span>
+        </a>
+        <a href="/orders.html" class="nav-link" id="ordersLink" style="display:none;">My Orders</a>
+        <a href="/login.html" class="nav-link btn btn-primary btn-sm" id="authBtn">Sign In</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>Shopping Cart</h1>
+    </div>
+
+    <div id="cartContent"></div>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2026 SubStore. All rights reserved.</p>
+  </footer>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/chat-widget.js"></script>
+  <script>
+    const productStyles = {
+      'ChatGPT Plus': { icon: '🤖', bg: '#10A37F' },
+      'LinkedIn Premium Business': { icon: '💼', bg: '#0077B5' },
+      'YouTube Premium': { icon: '▶️', bg: '#FF0000' },
+      'Spotify Premium': { icon: '🎵', bg: '#1DB954' },
+      'Netflix Standard': { icon: '🎬', bg: '#E50914' },
+      'Microsoft 365 Personal': { icon: '📊', bg: '#0078D4' },
+      'Adobe Creative Cloud': { icon: '🎨', bg: '#FF0000' },
+      'Canva Pro': { icon: '✏️', bg: '#00C4CC' }
+    };
+
+    function renderCart() {
+      const items = Cart.getAll();
+      const container = document.getElementById('cartContent');
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-cart">
+            <div class="icon">🛒</div>
+            <h2>Your cart is empty</h2>
+            <p>Browse our subscription catalog and add items to your cart.</p>
+            <a href="/" class="btn btn-primary mt-4">Browse Products</a>
+          </div>
+        `;
+        return;
+      }
+
+      const total = Cart.getTotal();
+      const itemsHtml = items.map(item => {
+        const style = productStyles[item.name] || { icon: '📦', bg: '#6C5CE7' };
+        return `
+          <div class="cart-item">
+            <div class="cart-item-icon" style="background:${style.bg}20; color:${style.bg}">
+              ${style.icon}
+            </div>
+            <div class="cart-item-info">
+              <h3>${item.name}</h3>
+              <span class="duration">${item.duration}</span>
+            </div>
+            <div class="cart-item-qty">
+              <button class="qty-btn" onclick="updateQty(${item.id}, ${item.quantity - 1})">−</button>
+              <span>${item.quantity}</span>
+              <button class="qty-btn" onclick="updateQty(${item.id}, ${item.quantity + 1})">+</button>
+            </div>
+            <div class="cart-item-price">$${(item.price * item.quantity).toFixed(2)}</div>
+            <button class="cart-item-remove" onclick="removeItem(${item.id})" title="Remove">✕</button>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="cart-layout">
+          <div class="cart-items">${itemsHtml}</div>
+          <div class="cart-summary">
+            <h2>Order Summary</h2>
+            <div class="summary-row">
+              <span>Subtotal (${items.reduce((s, i) => s + i.quantity, 0)} items)</span>
+              <span>$${total.toFixed(2)}</span>
+            </div>
+            <div class="summary-row">
+              <span>Service Fee</span>
+              <span>$0.00</span>
+            </div>
+            <div class="summary-row total">
+              <span>Total</span>
+              <span>$${total.toFixed(2)}</span>
+            </div>
+            <a href="/checkout.html" class="btn btn-primary btn-block btn-lg mt-4">
+              Proceed to Checkout
+            </a>
+            <a href="/" class="btn btn-secondary btn-block mt-2">
+              Continue Shopping
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateQty(productId, newQty) {
+      if (newQty <= 0) {
+        Cart.remove(productId);
+        showToast('Item removed', 'info');
+      } else {
+        Cart.updateQuantity(productId, newQty);
+      }
+      renderCart();
+      updateCartBadge();
+    }
+
+    function removeItem(productId) {
+      Cart.remove(productId);
+      showToast('Item removed', 'info');
+      renderCart();
+      updateCartBadge();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCart();
+      updateCartBadge();
+      updateAuthUI();
+    });
+  </script>
+</body>
+</html>

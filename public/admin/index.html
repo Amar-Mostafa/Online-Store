@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — SubStore</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-sidebar { display: flex; flex-direction: column; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .search-input {
+      padding: 10px 16px;
+      border: 2px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      width: 260px;
+      transition: var(--transition);
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .product-active { color: var(--success); }
+    .product-inactive { color: var(--danger); }
+    .actions-cell { display: flex; gap: 8px; }
+    .order-notes { max-width: 200px; font-size: 0.8rem; color: var(--dark-light); }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <a href="/" class="logo">
+        <div class="logo-icon">S</div>
+        SubStore
+      </a>
+      <nav class="admin-nav">
+        <a href="#" class="admin-nav-link active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
+          📊 Dashboard
+        </a>
+        <a href="#" class="admin-nav-link" data-tab="products" onclick="switchTab('products', this)">
+          📦 Products
+        </a>
+        <a href="#" class="admin-nav-link" data-tab="orders" onclick="switchTab('orders', this)">
+          🛒 Orders
+        </a>
+        <a href="#" class="admin-nav-link" data-tab="customers" onclick="switchTab('customers', this)">
+          👥 Customers
+        </a>
+        <a href="#" class="admin-nav-link" data-tab="users" onclick="switchTab('users', this)">
+          🔐 Users & Roles
+        </a>
+        <a href="/support/" class="admin-nav-link" style="border:0; margin-top:8px; opacity:0.6;">
+          💬 Support Panel →
+        </a>
+      </nav>
+      <div class="admin-logout">
+        <a href="#" class="admin-nav-link" onclick="adminLogout()" style="border:0;">
+          🚪 Sign Out
+        </a>
+        <div style="padding: 8px 24px; font-size:0.8rem; color:rgba(255,255,255,0.4);">
+          <span id="adminPhone"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <!-- Dashboard Tab -->
+      <div class="tab-content active" id="tab-dashboard">
+        <div class="admin-header">
+          <h1>Dashboard</h1>
+          <span style="color:var(--dark-light);" id="dashDate"></span>
+        </div>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-icon products">📦</div>
+            <div class="stat-info">
+              <h3 id="statProducts">—</h3>
+              <p>Active Products</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orders">🛒</div>
+            <div class="stat-info">
+              <h3 id="statOrders">—</h3>
+              <p>Total Orders</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon revenue">💰</div>
+            <div class="stat-info">
+              <h3 id="statRevenue">—</h3>
+              <p>Total Revenue</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon customers">👥</div>
+            <div class="stat-info">
+              <h3 id="statCustomers">—</h3>
+              <p>Customers</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-table-card">
+          <div class="admin-table-header">
+            <h2>Recent Orders</h2>
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="recentOrdersBody">
+              <tr><td colspan="6" class="text-center" style="padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Products Tab -->
+      <div class="tab-content" id="tab-products">
+        <div class="admin-header">
+          <h1>Products</h1>
+          <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+        </div>
+        <div class="admin-table-card">
+          <div class="admin-table-header">
+            <h2>All Products</h2>
+            <input type="text" class="search-input" placeholder="Search products..." id="productSearch" oninput="filterProducts()">
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <tr><td colspan="7" class="text-center" style="padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Orders Tab -->
+      <div class="tab-content" id="tab-orders">
+        <div class="admin-header">
+          <h1>Orders</h1>
+          <select class="search-input" id="orderFilter" onchange="loadAdminOrders()" style="width:200px;">
+            <option value="all">All Orders</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="admin-table-card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+              <tr><td colspan="9" class="text-center" style="padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Customers Tab -->
+      <div class="tab-content" id="tab-customers">
+        <div class="admin-header">
+          <h1>Customers</h1>
+        </div>
+        <div class="admin-table-card">
+          <div class="admin-table-header">
+            <h2>All Customers</h2>
+            <input type="text" class="search-input" placeholder="Search customers..." id="customerSearch" oninput="filterCustomers()">
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Phone</th>
+                <th>Name</th>
+                <th>Orders</th>
+                <th>Total Spent</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="customersTableBody">
+              <tr><td colspan="6" class="text-center" style="padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users & Roles Tab -->
+      <div class="tab-content" id="tab-users">
+        <div class="admin-header">
+          <h1>Users & Roles</h1>
+        </div>
+        <div style="margin-bottom:20px; padding:16px 20px; background:var(--white); border-radius:var(--radius-sm); border-left:4px solid var(--primary); font-size:0.9rem; color:var(--dark-light);">
+          <strong>Access Levels:</strong>
+          <span class="role-badge customer" style="margin-left:8px;">Customer</span> View & buy products
+          <span class="role-badge support" style="margin-left:12px;">Support</span> View & help customers via chat
+          <span class="role-badge admin" style="margin-left:12px;">Admin</span> Full access to everything
+        </div>
+        <div class="admin-table-card">
+          <div class="admin-table-header">
+            <h2>All Users</h2>
+            <input type="text" class="search-input" placeholder="Search users..." id="userSearch" oninput="filterUsers()">
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Phone</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Orders</th>
+                <th>Total Spent</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="8" class="text-center" style="padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Product Modal -->
+  <div class="admin-modal-overlay" id="productModal">
+    <div class="admin-modal">
+      <h2 id="productModalTitle">Add New Product</h2>
+      <input type="hidden" id="editProductId">
+      <div class="admin-modal .form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="form-group">
+          <label>Product Name *</label>
+          <input type="text" class="form-input" id="prodName" placeholder="e.g. ChatGPT Plus">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" class="form-input" id="prodCategory" placeholder="e.g. AI Tools">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-input" id="prodDescription" rows="3" placeholder="Product description..."></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+        <div class="form-group">
+          <label>Price ($) *</label>
+          <input type="number" class="form-input" id="prodPrice" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <input type="text" class="form-input" id="prodDuration" placeholder="1 Month" value="1 Month">
+        </div>
+        <div class="form-group">
+          <label>Badge</label>
+          <input type="text" class="form-input" id="prodBadge" placeholder="e.g. Most Popular">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Features (one per line)</label>
+        <textarea class="form-input" id="prodFeatures" rows="5" placeholder="Feature 1&#10;Feature 2&#10;Feature 3"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeProductModal()">Cancel</button>
+        <button class="btn btn-primary" id="saveProductBtn" onclick="saveProduct()">Save Product</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Status Modal -->
+  <div class="admin-modal-overlay" id="orderModal">
+    <div class="admin-modal" style="max-width:400px;">
+      <h2>Update Order Status</h2>
+      <input type="hidden" id="editOrderId">
+      <div class="form-group">
+        <label>Status</label>
+        <select class="form-input" id="orderStatus">
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea class="form-input" id="orderNotes" rows="3" placeholder="Add notes..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeOrderModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="updateOrderStatus()">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role Change Modal -->
+  <div class="admin-modal-overlay" id="roleModal">
+    <div class="admin-modal" style="max-width:400px;">
+      <h2>Change User Role</h2>
+      <input type="hidden" id="editUserId">
+      <p style="font-size:0.9rem;color:var(--dark-light);margin-bottom:16px;">
+        User: <strong id="roleUserPhone"></strong>
+      </p>
+      <div class="form-group">
+        <label>Role</label>
+        <select class="form-input" id="userRole">
+          <option value="customer">Customer — Can only view and buy products</option>
+          <option value="support">Support — Can view and help customers via chat</option>
+          <option value="admin">Admin — Full access to everything</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeRoleModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="updateUserRole()">Save Role</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    // ===== Auth Check =====
+    if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+      window.location.href = '/admin/login.html';
+    }
+
+    const token = Auth.getToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+
+    // Show admin phone
+    document.getElementById('adminPhone').textContent = Auth.getUser()?.phone || '';
+    document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    // ===== Tab Switching =====
+    function switchTab(tab, el) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.admin-nav-link').forEach(l => l.classList.remove('active'));
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      if (el) el.classList.add('active');
+
+      if (tab === 'dashboard') loadDashboard();
+      if (tab === 'users') loadAdminUsers();
+      if (tab === 'products') loadAdminProducts();
+      if (tab === 'orders') loadAdminOrders();
+      if (tab === 'customers') loadAdminCustomers();
+    }
+
+    // ===== Dashboard =====
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/admin/stats', { headers });
+        if (res.status === 401) { Auth.logout(); window.location.href = '/admin/login.html'; return; }
+        const data = await res.json();
+
+        document.getElementById('statProducts').textContent = data.totalProducts;
+        document.getElementById('statOrders').textContent = data.totalOrders;
+        document.getElementById('statRevenue').textContent = `$${data.totalRevenue.toFixed(2)}`;
+        document.getElementById('statCustomers').textContent = data.totalCustomers;
+
+        const tbody = document.getElementById('recentOrdersBody');
+        if (data.recentOrders.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:30px;color:var(--dark-light);">No orders yet</td></tr>';
+        } else {
+          tbody.innerHTML = data.recentOrders.map(o => `
+            <tr>
+              <td><strong>#${o.id}</strong></td>
+              <td>${o.customer_name || '—'}</td>
+              <td>${o.phone}</td>
+              <td><strong>$${o.total.toFixed(2)}</strong></td>
+              <td><span class="status-badge ${o.status}">${o.status}</span></td>
+              <td>${new Date(o.created_at + 'Z').toLocaleDateString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        showToast('Failed to load dashboard', 'error');
+      }
+    }
+
+    // ===== Products =====
+    let allAdminProducts = [];
+
+    async function loadAdminProducts() {
+      try {
+        const res = await fetch('/api/admin/products', { headers });
+        allAdminProducts = await res.json();
+        renderProductsTable(allAdminProducts);
+      } catch (e) {
+        showToast('Failed to load products', 'error');
+      }
+    }
+
+    function renderProductsTable(products) {
+      const tbody = document.getElementById('productsTableBody');
+      if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding:30px;">No products found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = products.map(p => `
+        <tr>
+          <td>#${p.id}</td>
+          <td><strong>${p.name}</strong></td>
+          <td>${p.category}</td>
+          <td>$${p.price.toFixed(2)}</td>
+          <td>${p.duration}</td>
+          <td>
+            <span class="${p.is_active ? 'product-active' : 'product-inactive'}">
+              ${p.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+          <td class="actions-cell">
+            <button class="btn btn-sm btn-primary" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>Edit</button>
+            <button class="btn btn-sm ${p.is_active ? 'btn-danger' : 'btn-success'}" onclick="toggleProduct(${p.id}, ${p.is_active})">
+              ${p.is_active ? 'Disable' : 'Enable'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterProducts() {
+      const q = document.getElementById('productSearch').value.toLowerCase();
+      const filtered = allAdminProducts.filter(p =>
+        p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+      );
+      renderProductsTable(filtered);
+    }
+
+    function openProductModal(product = null) {
+      document.getElementById('editProductId').value = product?.id || '';
+      document.getElementById('productModalTitle').textContent = product ? 'Edit Product' : 'Add New Product';
+      document.getElementById('prodName').value = product?.name || '';
+      document.getElementById('prodCategory').value = product?.category || '';
+      document.getElementById('prodDescription').value = product?.description || '';
+      document.getElementById('prodPrice').value = product?.price || '';
+      document.getElementById('prodDuration').value = product?.duration || '1 Month';
+      document.getElementById('prodBadge').value = product?.badge || '';
+      document.getElementById('prodFeatures').value = (product?.features || []).join('\n');
+      document.getElementById('productModal').classList.add('active');
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').classList.remove('active');
+    }
+
+    function editProduct(product) {
+      openProductModal(product);
+    }
+
+    async function saveProduct() {
+      const id = document.getElementById('editProductId').value;
+      const data = {
+        name: document.getElementById('prodName').value.trim(),
+        description: document.getElementById('prodDescription').value.trim(),
+        category: document.getElementById('prodCategory').value.trim(),
+        price: parseFloat(document.getElementById('prodPrice').value),
+        duration: document.getElementById('prodDuration').value.trim(),
+        badge: document.getElementById('prodBadge').value.trim(),
+        features: document.getElementById('prodFeatures').value.split('\n').filter(f => f.trim())
+      };
+
+      if (!data.name || !data.price) {
+        showToast('Name and price are required', 'error');
+        return;
+      }
+
+      try {
+        const url = id ? `/api/admin/products/${id}` : '/api/admin/products';
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, { method, headers, body: JSON.stringify(data) });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+
+        showToast(`Product ${id ? 'updated' : 'created'} successfully!`, 'success');
+        closeProductModal();
+        loadAdminProducts();
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    async function toggleProduct(id, currentState) {
+      try {
+        const res = await fetch(`/api/admin/products/${id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ is_active: currentState ? 0 : 1 })
+        });
+        if (!res.ok) throw new Error('Failed');
+        showToast(`Product ${currentState ? 'disabled' : 'enabled'}`, 'success');
+        loadAdminProducts();
+      } catch (e) {
+        showToast('Failed to update product', 'error');
+      }
+    }
+
+    // ===== Orders =====
+    async function loadAdminOrders() {
+      try {
+        const status = document.getElementById('orderFilter').value;
+        const url = `/api/admin/orders${status !== 'all' ? `?status=${status}` : ''}`;
+        const res = await fetch(url, { headers });
+        const orders = await res.json();
+
+        const tbody = document.getElementById('ordersTableBody');
+        if (orders.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:30px;">No orders found</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = orders.map(o => {
+          const itemNames = o.items.map(i => i.product_name).join(', ');
+          return `
+            <tr>
+              <td><strong>#${o.id}</strong></td>
+              <td>${o.customer_name || '—'}</td>
+              <td>${o.phone}</td>
+              <td title="${itemNames}" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${itemNames}</td>
+              <td><strong>$${o.total.toFixed(2)}</strong></td>
+              <td>${o.payment_method}</td>
+              <td><span class="status-badge ${o.status}">${o.status}</span></td>
+              <td>${new Date(o.created_at + 'Z').toLocaleDateString()}</td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="openOrderModal(${o.id}, '${o.status}', '${(o.notes || '').replace(/'/g, "\\'")}')">Update</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        showToast('Failed to load orders', 'error');
+      }
+    }
+
+    function openOrderModal(id, status, notes) {
+      document.getElementById('editOrderId').value = id;
+      document.getElementById('orderStatus').value = status;
+      document.getElementById('orderNotes').value = notes;
+      document.getElementById('orderModal').classList.add('active');
+    }
+
+    function closeOrderModal() {
+      document.getElementById('orderModal').classList.remove('active');
+    }
+
+    async function updateOrderStatus() {
+      const id = document.getElementById('editOrderId').value;
+      const status = document.getElementById('orderStatus').value;
+      const notes = document.getElementById('orderNotes').value;
+
+      try {
+        const res = await fetch(`/api/admin/orders/${id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ status, notes })
+        });
+        if (!res.ok) throw new Error('Failed');
+        showToast('Order updated!', 'success');
+        closeOrderModal();
+        loadAdminOrders();
+      } catch (e) {
+        showToast('Failed to update order', 'error');
+      }
+    }
+
+    // ===== Customers =====
+    let allCustomers = [];
+
+    async function loadAdminCustomers() {
+      try {
+        const res = await fetch('/api/admin/customers', { headers });
+        allCustomers = await res.json();
+        renderCustomersTable(allCustomers);
+      } catch (e) {
+        showToast('Failed to load customers', 'error');
+      }
+    }
+
+    function renderCustomersTable(customers) {
+      const tbody = document.getElementById('customersTableBody');
+      if (customers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:30px;">No customers yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = customers.map(c => `
+        <tr>
+          <td>#${c.id}</td>
+          <td>${c.phone}</td>
+          <td>${c.name || '—'}</td>
+          <td>${c.order_count}</td>
+          <td><strong>$${c.total_spent.toFixed(2)}</strong></td>
+          <td>${new Date(c.created_at + 'Z').toLocaleDateString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    function filterCustomers() {
+      const q = document.getElementById('customerSearch').value.toLowerCase();
+      const filtered = allCustomers.filter(c =>
+        c.phone.includes(q) || (c.name || '').toLowerCase().includes(q)
+      );
+      renderCustomersTable(filtered);
+    }
+
+    // ===== Users & Roles =====
+    let allUsers = [];
+
+    async function loadAdminUsers() {
+      try {
+        const res = await fetch('/api/admin/users', { headers });
+        allUsers = await res.json();
+        renderUsersTable(allUsers);
+      } catch (e) {
+        showToast('Failed to load users', 'error');
+      }
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('usersTableBody');
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:30px;">No users found</td></tr>';
+        return;
+      }
+      const myId = Auth.getUser()?.id;
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td>#${u.id}</td>
+          <td>${u.phone}</td>
+          <td>${u.name || '—'}</td>
+          <td><span class="role-badge ${u.role || 'customer'}">${u.role || 'customer'}</span></td>
+          <td>${u.order_count}</td>
+          <td><strong>$${(u.total_spent || 0).toFixed(2)}</strong></td>
+          <td>${new Date(u.created_at + 'Z').toLocaleDateString()}</td>
+          <td class="actions-cell">
+            <button class="btn btn-sm btn-primary" onclick="openRoleModal(${u.id}, '${u.phone}', '${u.role || 'customer'}')">Role</button>
+            ${u.id !== myId ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id}, '${u.phone}')">Delete</button>` : '<span style="font-size:0.75rem;color:var(--dark-light);">You</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterUsers() {
+      const q = document.getElementById('userSearch').value.toLowerCase();
+      const filtered = allUsers.filter(u =>
+        u.phone.includes(q) || (u.name || '').toLowerCase().includes(q) || (u.role || '').includes(q)
+      );
+      renderUsersTable(filtered);
+    }
+
+    function openRoleModal(userId, phone, currentRole) {
+      document.getElementById('editUserId').value = userId;
+      document.getElementById('roleUserPhone').textContent = phone;
+      document.getElementById('userRole').value = currentRole;
+      document.getElementById('roleModal').classList.add('active');
+    }
+
+    function closeRoleModal() {
+      document.getElementById('roleModal').classList.remove('active');
+    }
+
+    async function updateUserRole() {
+      const id = document.getElementById('editUserId').value;
+      const role = document.getElementById('userRole').value;
+
+      try {
+        const res = await fetch(`/api/admin/users/${id}/role`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ role })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        showToast(`Role updated to ${role}!`, 'success');
+        closeRoleModal();
+        loadAdminUsers();
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    async function deleteUser(id, phone) {
+      if (!confirm(`Delete user ${phone}? This cannot be undone.`)) return;
+
+      try {
+        const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        showToast('User deleted', 'success');
+        loadAdminUsers();
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    // ===== Logout =====
+    function adminLogout() {
+      Auth.logout();
+      window.location.href = '/admin/login.html';
+    }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.admin-modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('active');
+      });
+    });
+
+    // ===== Init =====
+    loadDashboard();
+  </script>
+</body>
+</html>
